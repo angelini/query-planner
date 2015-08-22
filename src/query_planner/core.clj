@@ -72,25 +72,48 @@
   (-> (map :action row) set type boolean))
 
 (defn filter-row? [row] (row-type? row :filter))
-(defn map-row? [row] (row-type? row :map))
+(defn map-row?    [row] (row-type? row :map))
+(defn join-row?   [row] (row-type? row :join))
 
-(s/defn swappable? :- s/Bool
+(s/defn border-index-of :- s/Int
+  [row :- Row
+   type :- s/Keyword
+   dir]
+  (let [type-idxs (->> (map :action row)
+                       (map-indexed (fn [idx a] (when (= a type) idx)))
+                       (filter identity))]
+    (if (empty? type-idxs)
+      -1
+      (dir type-idxs))))
+
+(defn right-index-of [row type]
+  (border-index-of row type last))
+
+(defn left-index-of [row type]
+  (border-index-of row type first))
+
+(s/defn swappable?
   [upper :- Row
    lower :- Row]
-  (and (map-row? upper)
-       (filter-row? lower)))
+  (or (and (map-row? upper)
+           (filter-row? lower))
+      (and (join-row? upper)
+           (filter-row? lower)
+           (< (right-index-of lower :filter) (left-index-of upper :load)))))
 
 (s/defn swap-rows :- Query
   [q :- Query]
   (update q :rows
           (fn [rows]
-            (reduce (fn [acc row]
-                      (let [prev-row (last acc)]
-                        (if (and prev-row
-                                 (swappable? prev-row row))
-                          (conj (pop acc) row prev-row)
-                          (conj acc row))))
-                    [] rows))))
+            (let [rev-rows (reverse rows)
+                  rev-swapped (reduce (fn [acc row]
+                                        (let [lower-row (last acc)]
+                                          (if (and lower-row
+                                                   (swappable? row lower-row))
+                                            (conj (pop acc) row lower-row)
+                                            (conj acc row))))
+                                      [] rev-rows)]
+              (reverse rev-swapped)))))
 
 (s/defn optimize :- Query
   [q :- Query]
