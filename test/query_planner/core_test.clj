@@ -3,6 +3,13 @@
             [clojure.test :refer :all]
             [query-planner.core :refer :all]))
 
+(deftest validate-neighbours
+  (let [q (new-query [[(load-n "a") (select-n)]])]
+    (is (not (validate q))))
+  (let [q (new-query [[(load-n "a") (load-n "b")]
+                      [(select-n)   (empty-n)]])]
+    (is (validate q))))
+
 (deftest optimize-empty
   (let [q (new-query [[(load-n "a") (load-n "b")]
                       [(select-n)   (empty-n)]])

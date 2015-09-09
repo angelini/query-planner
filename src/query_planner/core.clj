@@ -15,15 +15,15 @@
    :cols [Col]})
 
 (def valid-neighbours
-  {:load   [:load :empty :none :join]
-   :map    [:map :empty :none]
-   :filter [:filter :empty :none]
-   :join   [:join :empty :none :load]
-   :select [:select :empty]
-   :group  [:empty :none]
-   :sort   [:sort :empty :none]
-   :none   [:none :empty :group :join :filter :map :load]
-   :empty  [:empty :none :group :join :filter :map :load :select]})
+  {:load   #{:load :empty :none :join}
+   :map    #{:map :empty :none}
+   :filter #{:filter :empty :none}
+   :join   #{:join :empty :none :load}
+   :select #{:select :empty}
+   :group  #{:empty :none}
+   :sort   #{:sort :empty :none}
+   :none   #{:none :empty :group :join :filter :map :load}
+   :empty  #{:empty :none :group :join :filter :map :load :select}})
 
 (defn load-n   [col] {:action :load   :args [col]})
 (defn map-n    [fid] {:action :map    :args [fid]})
@@ -34,12 +34,6 @@
 (defn sort-n   [idx] {:action :sort   :args [idx]})
 (defn none-n   []    {:action :none   :args []})
 (defn empty-n  []    {:action :empty  :args []})
-
-(s/defn rows->cols :- [Col]
-  [rows :- [Row]]
-  (vec (for [ci (range (-> rows last count))]
-         (vec (for [ri (range (count rows))]
-                (get-in rows [ri ci] (empty-n)))))))
 
 (defn print-nodes [ns]
   (doseq [node ns]
@@ -55,6 +49,12 @@
     (-> (keep-indexed #(when-not (contains? idxs %1) %2)
                       coll)
         vec)))
+
+(s/defn rows->cols :- [Col]
+  [rows :- [Row]]
+  (vec (for [ci (range (-> rows last count))]
+         (vec (for [ri (range (count rows))]
+                (get-in rows [ri ci] (empty-n)))))))
 
 (s/defn actions :- #{s/Keyword}
   [ns :- [Node]]
@@ -96,7 +96,19 @@
 (defn join-row?   [row] (row-type? row :join))
 (defn group-row?  [row] (row-type? row :group))
 
-(defn border-index-of [row type dir]
+(s/defn row-valid? :- s/Bool
+  [row :- Row]
+  (let [row-actions (actions row)
+        valid-nodes (map (fn [node]
+                           (->> (:action node)
+                                (get valid-neighbours)
+                                (clojure.set/intersection row-actions)
+                                count
+                                (= (count row-actions))))
+                         row)]
+    (every? true? valid-nodes)))
+
+(defn- border-index-of [row type dir]
   (let [type-idxs (->> (map :action row)
                        (map-indexed (fn [idx a] (when (= a type) idx)))
                        (filter identity))]
@@ -134,6 +146,11 @@
                                   (conj acc row))))
                             [] rev-rows)]
     (new-query (vec (reverse rev-swapped)))))
+
+(s/defn validate :- s/Bool
+  [q :- Query]
+  (let [valid-rows (map row-valid? (:rows q))]
+    (every? true? valid-rows)))
 
 (s/defn optimize :- Query
   [q :- Query]
