@@ -14,6 +14,16 @@
   {:rows [Row]
    :cols [Col]})
 
+(def valid-neighbours
+  {:load   [:load :empty :none :join]
+   :map    [:map :empty :none]
+   :filter [:filter :empty :none]
+   :join   [:join :empty :none :load]
+   :select [:select :empty]
+   :group  [:empty :none]
+   :sort   [:sort :empty :none]
+   :none   [:none :empty :group :join :filter :map :load]
+   :empty  [:empty :none :group :join :filter :map :load :select]})
 
 (defn load-n   [col] {:action :load   :args [col]})
 (defn map-n    [fid] {:action :map    :args [fid]})
