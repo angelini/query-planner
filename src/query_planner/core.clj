@@ -4,7 +4,7 @@
 
 (def Node
   {:action (s/enum :load :map :filter :join :select :group :sort :none :empty)
-   :args [s/Str]})
+   :args [s/Keyword]})
 
 (def Row [Node])
 
@@ -187,12 +187,12 @@
   (println))
 
 
-(def q1 (new-query [[(load-n "a") (load-n "b")]
+(def q1 (new-query [[(load-n :a) (load-n :b)]
                     [(select-n)   (empty-n)]]))
 
-(def q2 (new-query [[(load-n "a")]
-                    [(map-n "ident")]
-                    [(filter-n "true")]]))
+(def q2 (new-query [[(load-n :a)]
+                    [(map-n :ident)]
+                    [(filter-n :true)]]))
 
 (defn -main []
   (optimize-and-print q1)
