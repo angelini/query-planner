@@ -28,7 +28,7 @@
 (defn load-n   [col] {:action :load   :args [col]})
 (defn map-n    [fid] {:action :map    :args [fid]})
 (defn filter-n [fid] {:action :filter :args [fid]})
-(defn join-n   []    {:action :join   :args []})
+(defn join-n   [col] {:action :join   :args [col]})
 (defn select-n []    {:action :select :args []})
 (defn group-n  []    {:action :group  :args []})
 (defn sort-n   [idx] {:action :sort   :args [idx]})
@@ -96,6 +96,19 @@
 (defn join-row?   [row] (row-type? row :join))
 (defn group-row?  [row] (row-type? row :group))
 
+(s/defn col-valid? :- s/Bool
+  [col :- Col]
+  (let [without-empty (->> col
+                           (mapv :action)
+                           (filter (fn [a] (not= a :empty))))]
+    (and (= :load (first without-empty))
+         (not ((set (rest without-empty)) :load)))))
+
+(s/defn cols-valid? :- s/Bool
+  [cols :- [Col]]
+  (let [valid-cols (map col-valid? cols)]
+    (every? true? valid-cols)))
+
 (s/defn row-valid? :- s/Bool
   [row :- Row]
   (let [row-actions (actions row)
@@ -107,6 +120,16 @@
                                 (= (count row-actions))))
                          row)]
     (every? true? valid-nodes)))
+
+(s/defn rows-valid? :- s/Bool
+  [rows :- [Row]]
+  (let [valid-rows (map row-valid? rows)]
+    (every? true? valid-rows)))
+
+(s/defn validate :- s/Bool
+  [q :- Query]
+  (and (rows-valid? (:rows q))
+       (cols-valid? (:cols q))))
 
 (defn- border-index-of [row type dir]
   (let [type-idxs (->> (map :action row)
@@ -147,11 +170,6 @@
                             [] rev-rows)]
     (new-query (vec (reverse rev-swapped)))))
 
-(s/defn validate :- s/Bool
-  [q :- Query]
-  (let [valid-rows (map row-valid? (:rows q))]
-    (every? true? valid-rows)))
-
 (s/defn optimize :- Query
   [q :- Query]
   (-> q
@@ -169,12 +187,12 @@
   (println))
 
 
-(def q1 {:rows [[(load-n "a") (load-n "b")]
-                [(select-n)   (empty-n)]]})
+(def q1 (new-query [[(load-n "a") (load-n "b")]
+                    [(select-n)   (empty-n)]]))
 
-(def q2 {:rows [[(load-n "a")]
-                [(map-n "ident")]
-                [(filter-n "true")]]})
+(def q2 (new-query [[(load-n "a")]
+                    [(map-n "ident")]
+                    [(filter-n "true")]]))
 
 (defn -main []
   (optimize-and-print q1)

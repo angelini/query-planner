@@ -42,6 +42,7 @@ Group rows where the val of the current col is equal
 Valid with: empty, none
 
 `(sort :idx)`
+
 Sort all rows by the cols in the order of idx
 Valid with: sort, empty, none
 

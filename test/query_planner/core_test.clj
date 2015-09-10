@@ -10,6 +10,14 @@
                       [(select-n)   (empty-n)]])]
     (is (validate q))))
 
+(deftest validate-start-with-load
+  (let [q (new-query [[(select-n) (empty-n)]])]
+    (is (not (validate q))))
+  (let [q (new-query [[(load-n "a") (empty-n)]
+                      [(join-n "b") (load-n "b")]
+                      [(select-n)   (select-n)]])]
+    (is (validate q))))
+
 (deftest optimize-empty
   (let [q (new-query [[(load-n "a") (load-n "b")]
                       [(select-n)   (empty-n)]])
@@ -29,25 +37,25 @@
 (deftest optimize-filter-with-join
   ;; Filter on right hand side of join
   (let [q (new-query [[(load-n "a")]
-                      [(join-n)   (load-n "b")]
-                      [(empty-n)  (map-n "ident")]
-                      [(empty-n)  (filter-n "true")]
-                      [(select-n) (select-n)]])
+                      [(join-n "b") (load-n "b")]
+                      [(empty-n)    (map-n "ident")]
+                      [(empty-n)    (filter-n "true")]
+                      [(select-n)   (select-n)]])
         e (new-query [[(load-n "a")]
-                      [(join-n)   (load-n "b")]
-                      [(empty-n)  (filter-n "true")]
-                      [(empty-n)  (map-n "ident")]
-                      [(select-n) (select-n)]])]
+                      [(join-n "b") (load-n "b")]
+                      [(empty-n)    (filter-n "true")]
+                      [(empty-n)    (map-n "ident")]
+                      [(select-n)   (select-n)]])]
     (is (= (optimize q) e)))
   ;; Filter on left hand side of join
   (let [q (new-query [[(load-n "a")]
-                      [(join-n)          (load-n "b")]
+                      [(join-n "b")      (load-n "b")]
                       [(map-n "ident")   (empty-n)]
                       [(filter-n "true") (empty-n)]
                       [(select-n)        (select-n)]])
         e (new-query [[(load-n "a")]
                       [(filter-n "true") (empty-n)]
-                      [(join-n)          (load-n "b")]
+                      [(join-n "b")      (load-n "b")]
                       [(map-n "ident")   (empty-n)]
                       [(select-n)        (select-n)]])]
     (is (= (optimize q) e))))
